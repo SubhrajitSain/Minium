@@ -137,18 +137,20 @@ To remove all data, simply remove the Minium source folder that you downloaded.
 | :--- | :--- |
 | <kbd>Ctrl</kbd> + <kbd>T</kbd> | Open New Tab |
 | <kbd>Ctrl</kbd> + <kbd>W</kbd> | Close Current Tab |
+| <kbd>Ctrl</kbd> + <kbd>N</kbd> | Open New Window (Same Session) |
+| <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>N</kbd> | Open New Burnt Window (New Session) |
 | <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>T</kbd> | Reopen Last Closed Tab |
 | <kbd>Ctrl</kbd> + <kbd>Tab</kbd> / <kbd>Ctrl</kbd> + <kbd>PgDn</kbd> | Switch to Next Tab |
 | <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Tab</kbd> | Switch to Previous Tab |
 | <kbd>Ctrl</kbd> + <kbd>1</kbd> to <kbd>9</kbd> | Jump to Tab 1–9 |
 | <kbd>Ctrl</kbd> + <kbd>L</kbd> or <kbd>Alt</kbd> + <kbd>D</kbd> | Focus Address Bar |
-| <kbd>Ctrl</kbd> + <kbd>F</kbd> | Open In-Page Search Bar |
+| <kbd>Ctrl</kbd> + <kbd>F</kbd> | Find In Page |
 | <kbd>F12</kbd> or <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>I</kbd> | Toggle Developer Tools Pane |
 | <kbd>Alt</kbd> + <kbd>P</kbd> | Open Video in Picture-in-Picture |
 | <kbd>F11</kbd> | Toggle Fullscreen Mode |
 | <kbd>Ctrl</kbd> + <kbd>R</kbd> or <kbd>F5</kbd> | Reload Page |
 | <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd> | Hard Reload (Bypass Cache) |
-| <kbd>Ctrl</kbd> + <kbd>+</kbd> / <kbd>-</kbd> / <kbd>0</kbd> | Zoom In / Out / Reset |
+| <kbd>Ctrl</kbd> + <kbd>+</kbd> (or <kbd>=</kbd>) / <kbd>-</kbd> / <kbd>0</kbd> | Zoom In / Out / Reset |
 | <kbd>Ctrl</kbd> + <kbd>Q</kbd> | Exit Browser |
 
 ---
