@@ -45,7 +45,6 @@ Ensure your system has Python 3.10+ and the Qt6 system dependencies installed.
 
 ```bash
 sudo dnf install python3 python3-pip qt6-qtwebengine-devtools
-pip install PySide6
 ```
 
 ### On Ubuntu / Debian / Mint
@@ -53,12 +52,20 @@ pip install PySide6
 ```bash
 sudo apt update
 sudo apt install python3 python3-pip qt6-webengine-dev-tools
-pip install PySide6
 ```
 
 ---
 
 ## 📥 Installation
+
+### Install via install script
+
+1. Run `install.sh`
+  ```bash
+  ./install.sh
+  ```
+
+### Install manually
 
 1. Clone or download the Minium repository to your local machine:
 
