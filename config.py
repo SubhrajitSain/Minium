@@ -15,7 +15,7 @@ BYPASSED_DOMAINS = set()
 HTTPS_UPGRADE_ATTEMPTS = set()
 HTTP_FALLBACK_URLS = set()
 
-VERSION = "0.1"
+VERSION = "0.1.1"
 GITHUB_REPO = "SubhrajitSain/Minium"
 RAW_REPO_URL = f"https://raw.githubusercontent.com/{GITHUB_REPO}/main"
 

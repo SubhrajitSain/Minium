@@ -1,4 +1,4 @@
 {
   "version": "0.1.1",
-  "files": ["installer.py"]
+  "files": ["installer.py", "config.py"]
 }
