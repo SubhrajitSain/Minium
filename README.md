@@ -177,3 +177,8 @@ Resources used in the making:
 * **d3ward** for the Toolz Blacklist.
 * **Peter Lowe**'s Adservers (Yoyo).
 * **AnudeepND** for the Adservers Blacklist.
+
+---
+
+*&copy; 2026 Minium by Subhrajit Sain. All rights reserved.*  
+*Minium is licensed under the MIT License.*
