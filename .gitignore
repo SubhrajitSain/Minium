@@ -1,1 +1,4 @@
-__pycache__/
+cache/*
+__pycache__/*
+*.pyc
+userscripts/
