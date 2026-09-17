@@ -18,7 +18,8 @@
 > Also as a side note, you should update Minium frequently through `Menu > Update Minium`.  
 
 > [!WARNING]
-> Minium was designed to be run on Linux, it most probably won't work correctly on Windows.
+> Windows support is experimental and not tested yet.  
+> Wish to test? Report your findings in the Issues tab. Thank you.
 
 To report problems or ask questions, please use GitHub Issues on this repository.  
 And for contributions, use GitHub Pull Requests.
