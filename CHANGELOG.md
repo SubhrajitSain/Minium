@@ -1,5 +1,10 @@
 # 🌟 Minium Updates and Changelog
 
+## v0.1.6
+
+* Made `get_pid_memory()` in `utils.py` compatible with Windows.
+* Minium should now be cross-compatible with Linux and Windows.
+
 ## v0.1.5
 
 * Fixed tab switching not working after opening Dev Tools.

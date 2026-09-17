@@ -1,5 +1,7 @@
 import os
 import base64
+import platform
+import subprocess
 
 from PySide6.QtCore import QSize, QUrl
 from PySide6.QtGui import QIcon
@@ -9,18 +11,37 @@ from config import BASE_DIR, ICON_DIR, FONTS_DIR
 def get_pid_memory(pid: int) -> str:
     if pid <= 0:
         return ""
-    try:
-        with open(f"/proc/{pid}/status", "r") as f:
-            for line in f:
-                if line.startswith("VmRSS:"):
-                    parts = line.split()
-                    if len(parts) >= 2:
-                        kb = int(parts[1])
-                        if kb >= 1024:
-                            return f"{kb / 1024:.1f} MB"
-                        return f"{kb} KB"
-    except Exception:
-        pass
+    
+    if platform.system().lower() == "windows":
+        try:
+            out = subprocess.check_output(
+                ['tasklist', '/FI', f'PID eq {pid}', '/FO', 'CSV', '/NH'],
+                creationflags=subprocess.CREATE_NO_WINDOW
+            ).decode('utf-8', errors='ignore')
+            
+            parts = out.strip().split('","')
+            if len(parts) >= 5:
+                mem_str = parts[4].replace(' K"', '').replace(',', '')
+                kb = int(mem_str)
+                if kb >= 1024:
+                    return f"{kb / 1024:.1f} MB"
+                return f"{kb} KB"
+        except Exception:
+            pass
+    else:
+        try:
+            with open(f"/proc/{pid}/status", "r") as f:
+                for line in f:
+                    if line.startswith("VmRSS:"):
+                        parts = line.split()
+                        if len(parts) >= 2:
+                            kb = int(parts[1])
+                            if kb >= 1024:
+                                return f"{kb / 1024:.1f} MB"
+                            return f"{kb} KB"
+        except Exception:
+            pass
+            
     return ""
 
 def get_minium_icon_b64() -> str:
