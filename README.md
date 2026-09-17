@@ -60,7 +60,14 @@ sudo apt install python3 python3-pip qt6-webengine-dev-tools
 
 ### Install via install script
 
-1. Run `install.sh`
+1. Clone or download the Minium repository to your local machine:
+
+   ```bash
+   git clone https://github.com/SubhrajitSain/Minium.git
+   cd Minium
+   ```
+
+2. Run `install.sh`
   ```bash
   ./install.sh
   ```
