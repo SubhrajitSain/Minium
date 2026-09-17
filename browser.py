@@ -38,6 +38,8 @@ from config import (
     BYPASSED_PHISH_URLS,
     PHISH_CACHE,
     ICON_DIR,
+    HTTPS_UPGRADE_ATTEMPTS,
+    HTTP_FALLBACK_URLS
 )
 from utils import load_google_icon, apply_google_icon, apply_os_icon, get_pid_memory
 from templates import get_error_html, get_blocked_html, get_phishing_html
@@ -281,6 +283,8 @@ class MiniumBrowser(QMainWindow):
         def handle_danger():
             try:
                 if view and (view.url().toString() == url_str or url_str in view.url().toString()):
+                    view._last_blocked_url = url_str
+                    view._last_blocked_host = QUrl(url_str).host().lower()
                     view.stop()
                     view.setHtml(get_phishing_html(url_str), QUrl("minium://phishing"))
             except RuntimeError:
@@ -433,7 +437,9 @@ class MiniumBrowser(QMainWindow):
         if self._pre_fullscreen_maximized:
             self.showMaximized()
 
-        self.tab_strip_widget.show()
+        if hasattr(self, 'toggle_tabs_act') and self.toggle_tabs_act.isChecked():
+            self.tab_strip_widget.show()
+
         if not self.headless:
             self.navbar_widget.show()
 
@@ -794,7 +800,7 @@ class MiniumBrowser(QMainWindow):
         self.back_btn.setToolTip("Back (Alt+Left)")
         self.style_nav_btn(self.back_btn)
         apply_google_icon(self.back_btn, "arrow_back", "←", QSize(14, 14))
-        self.back_btn.clicked.connect(lambda: self.current_view() and self.current_view().back())
+        self.back_btn.clicked.connect(lambda: self.navigate_back())
         self.nav_btns_layout.addWidget(self.back_btn)
 
         self.forward_btn = QPushButton()
@@ -1097,13 +1103,19 @@ class MiniumBrowser(QMainWindow):
             trigger_ui_update(True)
 
         def trigger_ui_update(dry=False):
-            self.fullscreen_banner.show_message("Updating Minium, please wait...", auto_dismiss=False)
+            if not dry:
+                self.fullscreen_banner.show_message("Updating Minium, please wait...", auto_dismiss=False)
+            else:
+                self.fullscreen_banner.show_message("Checking for updates, please wait...", auto_dismiss=False)
 
             def worker():
                 try:
                     success, msg = installer.check_and_apply_update(dry)
                 except Exception as e:
-                    success, msg = False, f"Update failed: {e}"
+                    if not dry:
+                        success, msg = False, f"Update failed: {e}"
+                    else:
+                        success, msg = False, f"Checking failed: {e}"
 
                 UPDATE_SERVICE.finished.emit(success, msg)
 
@@ -1639,6 +1651,8 @@ class MiniumBrowser(QMainWindow):
 
             if err_code == -10 or "ERR_ACCESS_DENIED" in err_str:
                 print("[!] browser: Minium blocked a page from being loaded.")
+                view._last_blocked_url = err_url
+                view._last_blocked_host = QUrl(err_url).host().lower()
                 view.setHtml(get_blocked_html(err_url), QUrl("minium://blocked"))
             else:
                 error_html = get_error_html(
@@ -1667,6 +1681,63 @@ class MiniumBrowser(QMainWindow):
         else:
             query = QUrl.toPercentEncoding(text).data().decode()
             view.setUrl(QUrl(f"https://duckduckgo.com/?q={query}"))
+
+    def is_host_blocked(self, host: str) -> bool:
+        if not host:
+            return False
+        import config
+        if host in config.ADBLOCK_DOMAINS or host in config.PHISH_CACHE:
+            return True
+        parts = host.split(".")
+        for i in range(len(parts) - 1):
+            if ".".join(parts[i:]) in config.ADBLOCK_DOMAINS:
+                return True
+        return False
+
+    def find_safe_back_item(self, view):
+        history = view.history()
+        blocked_host = getattr(view, "_last_blocked_host", "")
+        blocked_url = getattr(view, "_last_blocked_url", "")
+
+        for item in reversed(history.backItems(20)):
+            u = item.url().toString()
+            host = item.url().host().lower()
+
+            if not u or u.startswith("minium://") or u == "about:blank":
+                continue
+
+            if (blocked_url and u == blocked_url) or (blocked_host and host == blocked_host):
+                continue
+
+            if self.is_host_blocked(host):
+                continue
+
+            return item
+        return None
+
+    def navigate_back(self, view=None):
+        if view is None:
+            view = self.current_view()
+        if not view:
+            return
+
+        curr_url = view.url().toString()
+        is_warning_page = (
+            curr_url.startswith("minium://blocked") or
+            curr_url.startswith("minium://phishing") or
+            curr_url.startswith("minium://error")
+        )
+
+        if is_warning_page:
+            safe_item = self.find_safe_back_item(view)
+            if safe_item:
+                view.history().goToItem(safe_item)
+            else:
+                self.load_new_tab_page(view)
+            return
+
+        if view.history().canGoBack():
+            view.back()
 
     def view_source(self):
         cv = self.current_view()

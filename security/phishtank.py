@@ -4,7 +4,7 @@ import urllib.request
 from threading import Thread
 
 from PySide6.QtCore import QObject, Signal, QTimer
-from config import PHISH_CACHE, BYPASSED_PHISH_URLS, PHISHTANK_API_KEY
+from config import PHISH_CACHE, BYPASSED_PHISH_URLS, PHISHTANK_API_KEY, VERSION
 
 class PhishTankService(QObject):
     phish_found = Signal(object, str)
@@ -38,7 +38,7 @@ class PhishTankService(QObject):
                     endpoint,
                     data=data,
                     headers={
-                        "User-Agent": "phishtank/Minium 0.1",
+                        "User-Agent": f"phishtank/Minium {VERSION}",
                         "Content-Type": "application/x-www-form-urlencoded"
                     }
                 )

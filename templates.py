@@ -481,7 +481,7 @@ BLOCKED_PAGE_TEMPLATE = """<!DOCTYPE html>
             <b>Diagnostic:</b> net::ERR_ACCESS_DENIED
         </div>
         <div class="actions">
-            <button class="btn-safe" onclick=""window.location.href='minium://safety'"">Back to safety</button>
+            <button class="btn-safe" onclick="window.location.href='minium://safety'">Back to safety</button>
             <button class="btn-ignore" onclick="window.location.href='minium://proceed?target=__BLOCKED_URL__'">Proceed anyway</button>
         </div>
     </div>

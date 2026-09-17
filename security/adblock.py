@@ -15,6 +15,8 @@ from config import (
     ADBLOCK_DOMAINS,
     BYPASSED_DOMAINS,
     PHISH_CACHE,
+    WINDOWS,
+    VERSION
 )
 
 class AdBlockInterceptor(QWebEngineUrlRequestInterceptor):
@@ -116,7 +118,6 @@ def parse_blocklist_line(line: str) -> str:
 
 def start_adblock_fetch(on_complete_callback=None):
     print("[*] adblock: starting update checks...")
-    global ADBLOCK_DOMAINS
 
     os.makedirs(CACHE_DIR, exist_ok=True)
     needs_update = True
@@ -140,7 +141,8 @@ def start_adblock_fetch(on_complete_callback=None):
                     if line.strip() and not line.startswith("[ Minium Adblock Cache ]") and not line.startswith("#")
                 )
                 if cached:
-                    ADBLOCK_DOMAINS = cached
+                    ADBLOCK_DOMAINS.clear()
+                    ADBLOCK_DOMAINS.update(cached)
         except Exception:
             print("[!] adblock: exception occured during reading cache, will update.")
             needs_update = True
@@ -153,7 +155,6 @@ def start_adblock_fetch(on_complete_callback=None):
 
     def fetch():
         print("[*] adblock: starting update procedure...")
-        global ADBLOCK_DOMAINS
         sources = [
             "https://raw.githubusercontent.com/d3ward/toolz/master/src/d3host.txt",
             "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/ultimate.txt",
@@ -169,7 +170,7 @@ def start_adblock_fetch(on_complete_callback=None):
         for s in sources:
             print("[*] adblock: downloading:", s)
             try:
-                req = urllib.request.Request(s, headers={'User-Agent': 'Mozilla/5.0 Minium/0.1'})
+                req = urllib.request.Request(s, headers={'User-Agent': f'Mozilla/5.0 Minium/{VERSION}'})
                 with urllib.request.urlopen(req, timeout=15) as res:
                     for line in res.read().decode('utf-8', errors='ignore').splitlines():
                         dom = parse_blocklist_line(line)
@@ -181,7 +182,10 @@ def start_adblock_fetch(on_complete_callback=None):
 
         if len(new_domains) > 1000000:
             print(f"[*] adblock: saving {len(new_domains)} domains in the cache...")
-            ADBLOCK_DOMAINS = new_domains
+
+            ADBLOCK_DOMAINS.clear()
+            ADBLOCK_DOMAINS.update(new_domains)
+
             try:
                 now = int(time.time())
                 readable = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(now))
@@ -193,7 +197,8 @@ def start_adblock_fetch(on_complete_callback=None):
 
                 if on_complete_callback:
                     print("[s] adblock: update completed, calling callback in 4.5 s.")
-                    QTimer.singleShot(4500, on_complete_callback)
+                    if WINDOWS:
+                        QTimer.singleShot(4500, WINDOWS[0], on_complete_callback)
             except Exception:
                 print("[!] adblock: exception while saving to disk, possible corruption.")
                 pass

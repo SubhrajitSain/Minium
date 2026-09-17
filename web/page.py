@@ -2,7 +2,7 @@ from PySide6.QtCore import QUrl, QTimer, QUrlQuery
 from PySide6.QtWebEngineCore import QWebEnginePage
 from PySide6.QtWebEngineWidgets import QWebEngineView
 
-from config import BYPASSED_DOMAINS, BYPASSED_PHISH_URLS, PHISH_CACHE, HTTPS_UPGRADE_ATTEMPTS, HTTP_FALLBACK_URLS
+from config import BYPASSED_DOMAINS, BYPASSED_PHISH_URLS, PHISH_CACHE, HTTPS_UPGRADE_ATTEMPTS, HTTP_FALLBACK_URLS, ADBLOCK_DOMAINS
 from security.phishtank import PHISHTANK_SERVICE
 from templates import get_phishing_html
 
@@ -31,8 +31,8 @@ class BrowserPage(QWebEnginePage):
         target_view = self.get_view()
 
         if url_str.startswith("minium://safety"):
-            if target_view and target_view.history().canGoBack():
-                QTimer.singleShot(0, target_view.back)
+            if main_win and hasattr(main_win, "navigate_back"):
+                QTimer.singleShot(0, lambda: main_win.navigate_back(target_view))
             elif target_view and main_win:
                 QTimer.singleShot(0, lambda: main_win.load_new_tab_page(target_view))
             return False

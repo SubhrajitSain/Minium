@@ -1,2 +1,345 @@
-<h1>Minium</h1>
-<p>Website coming soon...</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <title>Minium | The Minimal Chromium Browser</title>
+    <meta name="description" content="Minium is a lightweight, privacy-first Chromium web browser built with Python and QtWebEngine. Features built-in adblocking, anti-phishing, zero telemetry, and completely ephemeral sessions.">
+    <meta name="keywords" content="Minium, web browser, privacy browser, Python browser, Python, PySide6, QtWebEngine, Chromium, adblock, open-source browser, anti-phishing, FOSS, open-source">
+    <meta name="author" content="Subhrajit Sain">
+    <link rel="canonical" href="https://subhrajitsain.github.io/Minium/">
+
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://subhrajitsain.github.io/Minium/">
+    <meta property="og:title" content="Minium | The Minimal Chromium Browser">
+    <meta property="og:description" content="Minium is a lightweight, privacy-first Chromium web browser built with Python and QtWebEngine. Features built-in adblocking, anti-phishing, zero telemetry, and completely ephemeral sessions.">
+    <meta property="og:image" content="https://subhrajitsain.github.io/Minium/assets/screenshot.png">
+    <meta property="og:site_name" content="Minium">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://subhrajitsain.github.io/Minium/">
+    <meta name="twitter:title" content="Minium | The Minimal Chromium Browser">
+    <meta name="twitter:description" content="Minium is a lightweight, privacy-first Chromium web browser built with Python and QtWebEngine. Features built-in adblocking, anti-phishing, zero telemetry, and completely ephemeral sessions.">
+    <meta name="twitter:image" content="https://subhrajitsain.github.io/Minium/assets/screenshot.png">
+
+    <link rel="icon" type="image/png" href="icons/minium.png">
+    
+    <style>
+        @font-face {
+            font-family: 'Google Sans Flex';
+            src: url('fonts/gsans_flex.ttf') format('truetype');
+            font-weight: 100 900;
+        }
+
+        :root {
+            --bg-base: #050608;
+            --bg-surface: #0b0c12;
+            --bg-card: #151722;
+            --border: #252838;
+            --text-main: #f1f3f8;
+            --text-muted: #94a3b8;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            font-family: 'Google Sans Flex', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 24px 20px;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+
+        .logo-container img {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+        }
+
+        .logo-text {
+            font-family: 'Google Sans Flex', sans-serif;
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -1px;
+            color: var(--text-main);
+        }
+
+        .version-badge {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        header {
+            text-align: center;
+            padding: 80px 20px 40px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 48px;
+            font-weight: 700;
+            letter-spacing: -1px;
+            margin-bottom: 16px;
+            line-height: 1.15;
+        }
+
+        .subtitle {
+            font-size: 18px;
+            color: var(--text-muted);
+            margin-bottom: 32px;
+            font-weight: 400;
+            max-width: 650px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin-bottom: 40px;
+        }
+
+        .btn {
+            display: inline-block;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+        }
+
+        .btn-primary {
+            background-color: var(--accent);
+            color: #ffffff;
+            border: 1px solid var(--accent);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--accent-hover);
+            border-color: var(--accent-hover);
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--text-main);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--bg-card);
+            border-color: #3b4058;
+        }
+
+        .text-block {
+            max-width: 680px;
+            margin: 0 auto 60px;
+            padding: 0 20px;
+            text-align: center;
+        }
+
+        .text-block h2 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-main);
+        }
+
+        .text-block p {
+            font-size: 15px;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        .screenshot-container {
+            max-width: 840px;
+            margin: 0 auto 80px;
+            padding: 0 20px;
+        }
+
+        .screenshot-container img {
+            width: 100%;
+            height: auto;
+            max-width: 800px;
+            display: block;
+            margin: 0 auto;
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .features {
+            max-width: 1000px;
+            margin: 0 auto 100px;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+        }
+
+        .feature-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 24px;
+            text-align: left;
+            transition: border-color 0.2s ease;
+        }
+
+        .feature-card:hover {
+            border-color: #3b4058;
+        }
+
+        .feature-icon {
+            font-size: 24px;
+            margin-bottom: 16px;
+            opacity: 0.9;
+        }
+
+        .feature-card h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .feature-card p {
+            font-size: 13.5px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 40px 20px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        footer a {
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.15s ease;
+            font-weight: 500;
+        }
+
+        footer a:hover {
+            color: var(--text-main);
+        }
+
+        @media (max-width: 600px) {
+            h1 { font-size: 38px; }
+            .cta-buttons { flex-direction: column; padding: 0 20px; }
+            header { padding-top: 60px; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <a href="#" class="logo-container">
+            <img src="icons/minium.png" alt="Minium Logo">
+            <span class="logo-text">Minium</span>
+        </a>
+        <div class="version-badge">v0.1.3</div>
+    </nav>
+
+    <header>
+        <h1>The minimal, privacy-first<br>Chromium web browser.</h1>
+        <p class="subtitle">A private, trustable, telemetry-free browser. Designed for power users who demand speed, security, and privacy.</p>
+        
+        <div class="cta-buttons">
+            <a href="https://github.com/SubhrajitSain/Minium" class="btn btn-primary">View on GitHub</a>
+            <a href="#features" class="btn btn-secondary">Explore Features</a>
+        </div>
+    </header>
+
+    <section class="text-block">
+        <h2>Designed to get out of your way.</h2>
+        <p>Browsers today are bloated with AI assistants, shopping integrations, and forced account syncs. Minium was built on a different philosophy: a browser should be a tool, not a tracker. It’s just you, the web, and a suite of powerful privacy tools running on a tiny Chromium core. Everything is wiped clean once you leave.</p>
+    </section>
+
+    <section class="screenshot-container">
+        <img src="assets/screenshot.png" alt="Minium Browser Screenshot" width="800" height="600">
+    </section>
+
+    <section id="features" class="features">
+        <div class="feature-card">
+            <div class="feature-icon">🛡️</div>
+            <h3>AdBlock & Anti-Phishing</h3>
+            <p>Built-in integration with multiple ads, tracker and bad domain sources and phishing detection from PhishTank by Cisco Talos.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">🔥</div>
+            <h3>Burn All Data</h3>
+            <p>Everything is ephemeral. A single click instantly destroys all cookies, caches, active sessions, and browsing history, in under a fraction of a second.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">🚫</div>
+            <h3>Zero Telemetry</h3>
+            <p>Absolutely no background tracking, no data collection, and no forced account syncs or updates. Your browsing data never leaves your local machine.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">🪟</div>
+            <h3>Custom UI</h3>
+            <p>A unified dark palette, custom grips, native tab scrolling, dark-scrollbars, and toast notifications to list a few. The whole window design is custom built.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">⌨️</div>
+            <h3>Keyboard Driven</h3>
+            <p>Navigate faster with Minium's extensive shortcuts. Jump between tabs, trigger Picture-in-Picture (WIP), or hard-reload without lifting your hands off the keyboard.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">🖥️</div>
+            <h3>Power-User Ready</h3>
+            <p>Universal borderless Picture-in-Picture (WIP) for all video platforms, a docked native Developer Tools pane, and auto-injected custom UserScripts and CSS.</p>
+        </div>
+    </section>
+
+    <section class="text-block" style="margin-bottom: 80px;">
+        <h2>Under the Hood</h2>
+        <p>Powered by Python, PySide6, and QtWebEngine, Minium delivers the rendering performance and standards compatibility of modern Chromium without the Google ecosystem overhead. It features an integrated rootless updater, supports native Linux XDG standards, and is fully open-source under the MIT License.</p>
+    </section>
+
+    <footer>
+        <p>&copy; 2026 Minium by Subhrajit Sain. All rights reserved.</p>
+        <p style="margin-top: 12px;">
+            <a href="https://github.com/SubhrajitSain/Minium">Source</a> &nbsp;|&nbsp; 
+            <a href="https://github.com/SubhrajitSain/Minium/pulls">PRs</a> &nbsp;|&nbsp; 
+            <a href="https://github.com/SubhrajitSain/Minium/issues">Issues</a> 
+        </p>
+    </footer>
+
+</body>
+</html>
