@@ -1,5 +1,13 @@
 # 🌟 Minium Updates and Changelog
 
+## v0.1.5
+
+* Fixed tab switching not working after opening Dev Tools.
+* Fixed an edge case regarding trailing `/` during HTTPS upgrade attempts.
+* Fixed an edge case related to user permissions during updates.
+* Added `ESC` detection to the `Ctrl+F` find tool to close the tool.
+* Fixed a bug where the PiP was kept open when the browser was closing.
+
 ## v0.1.4
 
 * Extended Linux & Windows cross compatability.

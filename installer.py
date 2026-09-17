@@ -142,6 +142,10 @@ def check_and_apply_update(dry_run=False):
     if "manifest.json" not in files_to_update:
         files_to_update.append("manifest.json")
 
+    if not os.access(BASE_DIR, os.W_OK):
+        print("[x] installer: permission denied, cannot write to browser directory.")
+        return False, "Permission denied! Please run 'minium --update' with admin/root privileges."
+
     staging_dir = os.path.join(BASE_DIR, ".update_staging")
     os.makedirs(staging_dir, exist_ok=True)
 

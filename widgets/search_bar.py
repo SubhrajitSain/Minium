@@ -141,3 +141,10 @@ class InPageSearchBar(QWidget):
         cv = self.window.current_view()
         if cv:
             cv.findText(self.search_input.text(), QWebEnginePage.FindFlag.FindBackward)
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Escape:
+            self.hide_search()
+            event.accept()
+        else:
+            super().keyPressEvent(event)

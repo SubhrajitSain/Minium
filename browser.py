@@ -1492,11 +1492,6 @@ class MiniumBrowser(QMainWindow):
             self.close()
 
     def on_tab_changed(self, index):
-        if hasattr(self, "devtools_pane") and self.devtools_pane.isVisible() and cv:
-            self.devtools_pane.attach_to_page(cv.page())
-        if hasattr(self, "tab_scroll") and self.tab_scroll:
-            rect = self.tab_bar.tabRect(index)
-            self.tab_scroll.ensureVisible(rect.center().x(), rect.center().y(), 60, 0)
         target_view = self.tab_bar.tabData(index)
         if target_view:
             if getattr(target_view, "_is_unloaded", False):
@@ -1507,6 +1502,14 @@ class MiniumBrowser(QMainWindow):
                 target_view.update_mask()
 
         cv = self.current_view()
+
+        if hasattr(self, "devtools_pane") and self.devtools_pane.isVisible() and cv:
+            self.devtools_pane.attach_to_page(cv.page())
+
+        if hasattr(self, "tab_scroll") and self.tab_scroll:
+            rect = self.tab_bar.tabRect(index)
+            self.tab_scroll.ensureVisible(rect.center().x(), rect.center().y(), 60, 0)
+
         if cv:
             self.on_url_changed(cv, cv.url())
             self.on_title_changed(cv, cv.title())
@@ -1627,8 +1630,11 @@ class MiniumBrowser(QMainWindow):
             if not err_url or err_url.startswith("minium://") or err_url == "about:blank":
                 return
 
-            if err_url in HTTPS_UPGRADE_ATTEMPTS:
-                HTTPS_UPGRADE_ATTEMPTS.discard(err_url)
+            err_url_clean = err_url.rstrip('/')
+            matched_upgrade = next((u for u in HTTPS_UPGRADE_ATTEMPTS if u.rstrip('/') == err_url_clean), None)
+
+            if matched_upgrade:
+                HTTPS_UPGRADE_ATTEMPTS.discard(matched_upgrade)
                 fallback_url = QUrl(err_url)
                 fallback_url.setScheme("http")
                 HTTP_FALLBACK_URLS.add(fallback_url.host().lower())
@@ -1672,10 +1678,15 @@ class MiniumBrowser(QMainWindow):
         text = text.strip()
         if not text:
             return
+
         if text == "minium://newtab":
             self.load_new_tab_page(view)
-        elif text.startswith("http://") or text.startswith("https://") or text.startswith("about:"):
+        elif text.startswith(("http://", "https://", "about:", "file://", "data:", "devtools://", "chrome:", "minium://")):
             view.setUrl(QUrl(text))
+        elif text.startswith("/") and os.path.exists(text):
+            view.setUrl(QUrl.fromLocalFile(text))
+        elif re.match(r'^[a-zA-Z]:[/\\]', text) and os.path.exists(text):
+            view.setUrl(QUrl.fromLocalFile(text))
         elif "." in text and " " not in text:
             view.setUrl(QUrl(f"https://{text}"))
         else:
@@ -1822,6 +1833,8 @@ class MiniumBrowser(QMainWindow):
                     pass
             self._active_downloads.clear()
 
+        if hasattr(self, "pip_window") and self.pip_window:
+            self.pip_window.close()
         if hasattr(self, "tab_idle_timer"):
             self.tab_idle_timer.stop()
         if hasattr(self, "_reveal_timer"):
