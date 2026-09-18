@@ -2,8 +2,8 @@ import os
 import json
 import re
 
-EXCLUDE_DIRS = {"__pycache__", "cache", ".update_staging", "userscripts"}
-EXCLUDE_FILES = {".DS_Store", "create_shortcut.vbs"}
+EXCLUDE_DIRS = {"__pycache__", "cache", ".update_staging", "userscripts", "data"}
+EXCLUDE_FILES = {".DS_Store", "create_shortcut.vbs", "prefs.json"}
 
 def get_current_version():
     try:

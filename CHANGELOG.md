@@ -1,5 +1,16 @@
 # 🌟 Minium Updates and Changelog
 
+## v0.1.7
+
+* Added Maxium mode, which makes data persist after the browser closes.
+* Added a preferences system using a `prefs.json` file.
+* Made the new tab more customizable: background and shortcuts.
+* Added bookmarks and browsing history pages.
+* Added a settings page with items from the menu moved there.
+* Made a proper `requirements.txt` file for easy dependency installation.
+* Added an extra password manager.
+* ...and maybe some more that I missed.
+
 ## v0.1.6
 
 * Made `get_pid_memory()` in `utils.py` compatible with Windows.

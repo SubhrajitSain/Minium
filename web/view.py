@@ -108,7 +108,7 @@ class CustomWebEngineView(QWebEngineView):
 
         if selected_text:
             preview = (selected_text[:20] + "...") if len(selected_text) > 20 else selected_text
-            trans_sel_act = QAction(load_google_icon("translate"), f'Translate "{preview}"', self)
+            trans_sel_act = QAction(load_google_icon("translate"), f'Translate "{preview}"...', self)
             enc_text = urllib.parse.quote(selected_text)
             trans_sel_act.triggered.connect(lambda: self.window.add_tab(
                 f"https://translate.google.com/?sl=auto&tl=en&text={enc_text}&op=translate"
@@ -229,7 +229,7 @@ class CustomWebEngineView(QWebEngineView):
         pip_act.triggered.connect(trigger_pip)
         menu.addAction(pip_act)
 
-        view_source = QAction(load_google_icon("code"), "View Page Source", self)
+        view_source = QAction(load_google_icon("code"), "View Page Source...", self)
         view_source.triggered.connect(self.window.view_source)
         menu.addAction(view_source)
 
@@ -243,7 +243,7 @@ class CustomWebEngineView(QWebEngineView):
 
             self.triggerPageAction(QWebEnginePage.WebAction.InspectElement)
 
-        inspect_act = QAction(load_google_icon("inspect"), "Inspect Element", self)
+        inspect_act = QAction(load_google_icon("inspect"), "Inspect Element...", self)
         inspect_act.triggered.connect(inspect_element)
         menu.addAction(inspect_act)
 

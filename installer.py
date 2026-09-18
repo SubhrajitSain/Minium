@@ -26,6 +26,7 @@ def install():
     main_script = os.path.join(BASE_DIR, "minium.py")
 
     if IS_WINDOWS:
+        print("[i] installer: detected platform: Windows")
         desktop, start_menu = _get_windows_paths()
         shortcut_desktop = os.path.join(desktop, "Minium.lnk")
         shortcut_start = os.path.join(start_menu, "Minium.lnk")
@@ -54,7 +55,7 @@ oLink2.Save
         print(f"[i] installer: created Windows shortcuts on Desktop and Start Menu.")
 
     else:
-        # Linux Installation
+        print("[i] installer: detected platform: non-Windows (Linux)")
         os.makedirs(BIN_DIR, exist_ok=True)
         os.makedirs(DESKTOP_DIR, exist_ok=True)
 
@@ -114,14 +115,14 @@ def uninstall():
 
 def check_and_apply_update(dry_run=False):
     manifest_url = f"{RAW_REPO_URL}/manifest.json"
-    print(f"[*] installer: checking for updates from: {manifest_url}")
+    print(f"[*] installer: checking manifest: {manifest_url}")
 
     try:
         req = urllib.request.Request(manifest_url, headers={"User-Agent": f"Minium/{VERSION}", "Cache-Control": "no-cache"})
         with urllib.request.urlopen(req, timeout=10) as resp:
             manifest = json.loads(resp.read().decode("utf-8"))
     except Exception as e:
-        print(f"[x] installer: could not check updates: {e}")
+        print(f"[x] installer: could not check for updates: {e}")
         return False, f"Check failed: {e}"
 
     remote_version = manifest.get("version", "unknown")
@@ -144,7 +145,7 @@ def check_and_apply_update(dry_run=False):
 
     if not os.access(BASE_DIR, os.W_OK):
         print("[x] installer: permission denied, cannot write to browser directory.")
-        return False, "Permission denied! Please run 'minium --update' with admin/root privileges."
+        return False, "Permission denied! Please exit and then run 'minium --update' with admin/root privileges."
 
     staging_dir = os.path.join(BASE_DIR, ".update_staging")
     os.makedirs(staging_dir, exist_ok=True)

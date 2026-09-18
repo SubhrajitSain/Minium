@@ -1,47 +1,21 @@
 import os
+import sys
 import gc
 import re
 import time
+import json
+import shutil
 import urllib.parse
 from threading import Thread
 
 from PySide6.QtCore import Qt, QSize, QUrl, QTimer, QEvent, QPoint, QObject, Signal
 from PySide6.QtGui import QAction, QKeySequence, QShortcut, QIcon, QFontDatabase, QGuiApplication
-from PySide6.QtWidgets import (
-    QMainWindow,
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QPushButton,
-    QToolButton,
-    QFileDialog,
-    QDialog,
-    QPlainTextEdit,
-    QTabBar,
-    QSizePolicy,
-    QLabel,
-    QMenu,
-    QSplitter
-)
-from PySide6.QtWebEngineCore import (
-    QWebEngineProfile,
-    QWebEngineSettings,
-    QWebEngineLoadingInfo,
-    QWebEngineDownloadRequest,
-    QWebEnginePage,
-)
+from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QToolButton, QFileDialog, QDialog, QPlainTextEdit, QTabBar, QSizePolicy, QLabel, QMenu, QSplitter
+from PySide6.QtWebEngineCore import QWebEngineProfile, QWebEngineSettings, QWebEngineLoadingInfo, QWebEngineDownloadRequest, QWebEnginePage
 from PySide6.QtWebEngineWidgets import QWebEngineView
 
-from config import (
-    WINDOWS,
-    BYPASSED_DOMAINS,
-    BYPASSED_PHISH_URLS,
-    PHISH_CACHE,
-    ICON_DIR,
-    HTTPS_UPGRADE_ATTEMPTS,
-    HTTP_FALLBACK_URLS
-)
-from utils import load_google_icon, apply_google_icon, apply_os_icon, get_pid_memory
+from config import GLOBAL_HISTORY, GLOBAL_BOOKMARKS, HISTORY_FILE, BOOKMARKS_FILE, CACHE_DIR, WINDOWS, BYPASSED_DOMAINS, BYPASSED_PHISH_URLS, PHISH_CACHE, ICON_DIR, HTTPS_UPGRADE_ATTEMPTS, HTTP_FALLBACK_URLS, PREFS_FILE, DATA_DIR, PASSWORDS_FILE
+from utils import load_google_icon, apply_google_icon, apply_os_icon, get_pid_memory, get_prefs, save_prefs, get_cached_favicon_b64
 from templates import get_error_html, get_blocked_html, get_phishing_html
 from security.adblock import AdBlockInterceptor, ADBLOCK_SERVICE
 from security.phishtank import PHISHTANK_SERVICE
@@ -55,12 +29,7 @@ from widgets.tab_bar import BrowserTabBar
 from widgets.address_bar import AddressBar
 from widgets.search_bar import InPageSearchBar
 from widgets.overlays import FullscreenBanner, LoadingViewport
-from widgets.popups import (
-    SecurityPopup,
-    DownloadsPopup,
-    AboutDialog,
-    HtmlSyntaxHighlighter,
-)
+from widgets.popups import SecurityPopup, DownloadsPopup, AboutDialog, HtmlSyntaxHighlighter, WarningDialog
 import installer
 
 class UpdateService(QObject):
@@ -69,8 +38,9 @@ class UpdateService(QObject):
 UPDATE_SERVICE = UpdateService()
 
 class MiniumBrowser(QMainWindow):
-    def __init__(self, headless=False, start_url=None, shared_profile=None):
+    def __init__(self, headless=False, start_url=None, shared_profile=None, maxium_mode=False):
         super().__init__()
+        self.maxium_mode = maxium_mode
         self.headless = headless
         self.start_url = start_url
         self.closed_tabs_history = []
@@ -99,7 +69,15 @@ class MiniumBrowser(QMainWindow):
 
         if shared_profile is not None:
             self.profile = shared_profile
+        elif self.maxium_mode:
+            print("[i] browser: profile data will be saved to disk as Maxium mode is active.")
+            os.makedirs(DATA_DIR, exist_ok=True)
+            self.profile = QWebEngineProfile("MiniumPersistentProfile", self)
+            self.profile.setPersistentStoragePath(DATA_DIR)
+            self.profile.setCachePath(os.path.join(DATA_DIR, "cache"))
+            self.profile.setPersistentCookiesPolicy(QWebEngineProfile.PersistentCookiesPolicy.AllowPersistentCookies)
         else:
+            print("[i] browser: profile is ephemeral and will be wiped on exit.")
             self.profile = QWebEngineProfile()
             self.profile.setHttpCacheType(QWebEngineProfile.HttpCacheType.MemoryHttpCache)
             self.profile.setPersistentCookiesPolicy(QWebEngineProfile.PersistentCookiesPolicy.NoPersistentCookies)
@@ -111,7 +89,7 @@ class MiniumBrowser(QMainWindow):
         self.profile.setUrlRequestInterceptor(self.adblock_interceptor)
         self.profile.downloadRequested.connect(self.on_download_requested)
 
-        self.scheme_handler = MiniumSchemeHandler(self.profile)
+        self.scheme_handler = MiniumSchemeHandler(self.profile, self)
         self.profile.installUrlSchemeHandler(b"minium", self.scheme_handler)
 
         real_ua = self.profile.httpUserAgent()
@@ -127,7 +105,13 @@ class MiniumBrowser(QMainWindow):
         self.tab_bar.currentChanged.connect(self.on_tab_changed)
         self.tab_bar.tabMoved.connect(self.on_tab_moved)
 
-        self.protect_me_enabled = True
+        self.prefs = get_prefs()
+        self.save_prefs = lambda: save_prefs(self.prefs)
+
+        self.protect_me_enabled = self.prefs.get("protect_me", True)
+        self.js_enabled = self.prefs.get("js_enabled", True)
+        self.web_theme_dark = self.prefs.get("web_theme_dark", True)
+
         PHISHTANK_SERVICE.phish_found.connect(self.on_phish_detected)
         ADBLOCK_SERVICE.updated.connect(self.fullscreen_banner.show_message)
         UPDATE_SERVICE.finished.connect(self.on_update_finished)
@@ -332,6 +316,9 @@ class MiniumBrowser(QMainWindow):
         apply_google_icon(self.shield_btn, icon_name, fallback, QSize(16, 16))
 
     def show_security_popup(self):
+        if not hasattr(self, "security_popup"):
+            self.security_popup = SecurityPopup(self)
+
         cv = self.current_view()
         if not cv:
             return
@@ -382,6 +369,9 @@ class MiniumBrowser(QMainWindow):
         self.security_popup.popup(QPoint(max(10, popup_x), btn_global.y()))
 
     def show_downloads_popup(self):
+        if not hasattr(self, "downloads_popup"):
+            self.downloads_popup = DownloadsPopup(self)
+
         btn_global = self.dl_btn.mapToGlobal(QPoint(0, self.dl_btn.height() + 4))
         popup_x = btn_global.x() - (self.downloads_popup.sizeHint().width() - self.dl_btn.width())
         self.downloads_popup.popup(QPoint(max(10, popup_x), btn_global.y()))
@@ -538,7 +528,7 @@ class MiniumBrowser(QMainWindow):
         def trigger_current_pip():
             cv = self.current_view()
             if not cv:
-                self.fullscreen_banner.show_message("PiP is currently unavailable.", is_error=True)
+                self.fullscreen_banner.show_message("PiP is currently unavailable as there is no current view.", is_error=True)
                 return
 
             js_code = """
@@ -564,7 +554,7 @@ class MiniumBrowser(QMainWindow):
             """
             def on_pip_result(success):
                 if not success:
-                    self.fullscreen_banner.show_message("PiP is currently unavailable.", is_error=True)
+                    self.fullscreen_banner.show_message("PiP is currently unavailable, could not find a playable element.", is_error=True)
 
             cv.page().runJavaScript(js_code, on_pip_result)
 
@@ -617,7 +607,7 @@ class MiniumBrowser(QMainWindow):
             url = self.closed_tabs_history.pop()
             self.add_tab(url)
         else:
-            self.fullscreen_banner.show_message("Cannot reopen last closed tab as there is no history.")
+            self.fullscreen_banner.show_message("Cannot reopen last closed tab as there is no history yet.")
 
     def create_window_controls(self) -> QWidget:
         print("[*] browser: creating window controls...")
@@ -821,7 +811,7 @@ class MiniumBrowser(QMainWindow):
 
         self.navbar_layout.addWidget(self.nav_btns_widget)
 
-        self.url_bar = AddressBar()
+        self.url_bar = AddressBar(self)
         self.url_bar.returnPressed.connect(lambda: self.navigate_to(self.url_bar.text()))
         self.navbar_layout.addWidget(self.url_bar)
 
@@ -841,8 +831,6 @@ class MiniumBrowser(QMainWindow):
         self.shield_btn.clicked.connect(self.show_security_popup)
         self.navbar_layout.addWidget(self.shield_btn)
 
-        self.security_popup = SecurityPopup(self)
-
         self.dl_btn = QPushButton()
         self.dl_btn.setFixedSize(28, 26)
         self.dl_btn.setToolTip("Downloads List")
@@ -850,8 +838,6 @@ class MiniumBrowser(QMainWindow):
         apply_google_icon(self.dl_btn, "dl", "↓", QSize(15, 15))
         self.dl_btn.clicked.connect(self.show_downloads_popup)
         self.navbar_layout.addWidget(self.dl_btn)
-
-        self.downloads_popup = DownloadsPopup(self)
 
         self.hamburger_btn = QToolButton()
         apply_google_icon(self.hamburger_btn, "menu", "☰", QSize(15, 15))
@@ -876,6 +862,22 @@ class MiniumBrowser(QMainWindow):
             self.main_layout.addWidget(self.navbar_widget, 0)
         else:
             self.navbar_widget.hide()
+
+        self.bookmarks_bar = QWidget()
+        self.bookmarks_bar.setFixedHeight(28)
+        self.bookmarks_bar.setStyleSheet("background-color: #0b0c12; border-bottom: 1px solid #1c1e29;")
+        self.bookmarks_layout = QHBoxLayout(self.bookmarks_bar)
+        self.bookmarks_layout.setContentsMargins(6, 0, 6, 0)
+        self.bookmarks_layout.setSpacing(6)
+        self.bookmarks_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+
+        self.refresh_bookmarks_bar()
+        if not self.headless and self.prefs.get("show_bookmarks_bar", False):
+            self.bookmarks_bar.show()
+        else:
+            self.bookmarks_bar.hide()
+
+        self.main_layout.insertWidget(2, self.bookmarks_bar)
 
     def style_nav_btn(self, btn):
         btn.setStyleSheet("""
@@ -903,36 +905,165 @@ class MiniumBrowser(QMainWindow):
             }
         """)
 
+    def toggle_web_theme(self):
+        self.web_theme_dark = not getattr(self, "web_theme_dark", True)
+
+        if hasattr(Qt, "ColorScheme") and hasattr(QGuiApplication.styleHints(), "setColorScheme"):
+            scheme = Qt.ColorScheme.Dark if self.web_theme_dark else Qt.ColorScheme.Light
+            QGuiApplication.styleHints().setColorScheme(scheme)
+
+        color_str = 'dark' if self.web_theme_dark else 'light'
+        js_code = f"""
+        (function() {{
+            let meta = document.querySelector('meta[name="color-scheme"]');
+            if (!meta) {{
+                meta = document.createElement('meta');
+                meta.name = 'color-scheme';
+                document.head.appendChild(meta);
+            }}
+            meta.content = '{color_str}';
+            document.documentElement.style.setProperty('color-scheme', '{color_str}', 'important');
+        }})();
+        """
+
+        for i in range(self.tab_bar.count()):
+            v = self.tab_bar.tabData(i)
+            if v and not getattr(v, "_is_unloaded", False):
+                v.page().runJavaScript(js_code)
+                if hasattr(QWebEngineSettings.WebAttribute, "ForceDarkMode"):
+                    v.settings().setAttribute(
+                        QWebEngineSettings.WebAttribute.ForceDarkMode,
+                        self.web_theme_dark
+                    )
+
+        theme_name = "dark" if self.web_theme_dark else "light"
+        self.fullscreen_banner.show_message(f"Theme of websites should now be {theme_name}.")
+
+    def refresh_bookmarks_bar(self):
+        while self.bookmarks_layout.count():
+            item = self.bookmarks_layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+
+        from config import GLOBAL_BOOKMARKS
+        from PySide6.QtGui import QIcon, QPixmap
+        from PySide6.QtCore import QSize, QByteArray
+        from utils import apply_google_icon
+
+        for bm in GLOBAL_BOOKMARKS:
+            btn = QPushButton()
+            btn.setFixedSize(22, 22)
+            btn.setToolTip(f"{bm.get('title', 'Bookmark')}\n{bm.get('url', '')}")
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setStyleSheet("""
+                QPushButton { border: none; background: transparent; border-radius: 4px; }
+                QPushButton:hover { background: #1a1c27; }
+            """)
+
+            icon_b64 = bm.get("icon") or get_cached_favicon_b64(bm.get("url", ""), fetch_if_missing=True)
+            if icon_b64:
+                try:
+                    ba = QByteArray.fromBase64(icon_b64.encode("utf-8"))
+                    pix = QPixmap()
+                    pix.loadFromData(ba, "PNG")
+                    if not pix.isNull():
+                        btn.setIcon(QIcon(pix))
+                        btn.setIconSize(QSize(14, 14))
+                    else:
+                        apply_google_icon(btn, "globe", "🌐", QSize(14, 14))
+                except Exception:
+                    apply_google_icon(btn, "globe", "🌐", QSize(14, 14))
+            else:
+                apply_google_icon(btn, "globe", "🌐", QSize(14, 14))
+
+            btn.clicked.connect(lambda _, u=bm.get('url'): self.add_tab(u))
+            self.bookmarks_layout.addWidget(btn)
+
+    def toggle_bookmarks_bar(self):
+        show = not self.prefs.get("show_bookmarks_bar", False)
+        self.prefs["show_bookmarks_bar"] = show
+        self.save_prefs()
+        if show and not self.headless:
+            self.bookmarks_bar.show()
+        else:
+            self.bookmarks_bar.hide()
+        self.fullscreen_banner.show_message(f"Bookmarks Bar is now {'shown' if show else 'hidden'}.")
+
+    def open_new_tab_customizer(self):
+        from widgets.new_tab_customizer import NewTabCustomizerDialog
+        dlg = NewTabCustomizerDialog(self)
+        dlg.exec()
+
+    def open_password_manager(self):
+        if not self.maxium_mode:
+            self.fullscreen_banner.show_message("Password Manager is only applicable for Maxium Mode.", is_error=True)
+            return
+
+        try:
+            from widgets.passwords import PasswordManagerDialog
+            dlg = PasswordManagerDialog(self)
+            dlg.exec()
+        except ImportError:
+            self.fullscreen_banner.show_message("Failed to import Password Manager. Do you have 'cryptography' installed?", is_error=True)
+
+    def toggle_js(self, enabled=None):
+        if enabled is None:
+            self.js_enabled = not getattr(self, "js_enabled", True)
+            enabled = self.js_enabled
+        else:
+            self.js_enabled = enabled
+
+        cv = self.current_view()
+        if cv:
+            cv.settings().setAttribute(QWebEngineSettings.WebAttribute.JavascriptEnabled, enabled)
+            cv.reload()
+        status = "enabled" if enabled else "disabled"
+        self.fullscreen_banner.show_message(f"JavaScript is now {status}.")
+
+    def burn_data_with_warning(self):
+        if self.maxium_mode:
+            dlg = WarningDialog("Burn All Saved Data?",
+                                "Doing so will delete all your history, bookmarks, browing data, cache, cookies, sessions and other data. This will cause Minium to become fresh, but you will lose your data.",
+                                "Burn", self)
+            dlg.set_destructive()
+        else:
+            dlg = WarningDialog("Burn Active Session?",
+                                "You are in ephemeral mode, and your current session will be reset if you burn all data. This includes history, bookmarks, cookies, cache and wipe your session clean like as if you just started.",
+                                "Burn", self)
+            dlg.set_destructive()
+
+        if dlg.exec():
+            self.burn_data()
+
+    def toggle_maxium_mode(self):
+        if self.maxium_mode:
+            dlg = WarningDialog("Disable Maxium Mode?",
+                                "This will permanently delete your 'data' folder, erasing all saved history and cookies. You will be signed out from all services. Minium will need to restart once to apply these changes.",
+                                "Disable", self)
+            dlg.set_destructive()
+            if dlg.exec():
+                print("[*] main: disabling Maxium mode...")
+                os.execl(sys.executable, sys.executable, *sys.argv, "--purge-data")
+        else:
+            dlg = WarningDialog("Enable Maxium Mode?",
+                                "Love Minium's asthetics and want it to not be in-memory? Your browsing history, cookies, and cache will be saved to disk, and after that, Minium will restart once to apply these changes. You can disable Maxium mode anytime, but that will delete your data in the process.",
+                                "Enable", self)
+            if dlg.exec():
+                print("[*] main: enabling Maxium mode...")
+                with open(PREFS_FILE, "w", encoding="utf-8") as f:
+                    json.dump({"maxium_mode": True}, f)
+                os.execl(sys.executable, sys.executable, *sys.argv)
+
     def setup_menu(self):
         print("[*] browser: setting up hamburger menu...")
         menu = QMenu(self.hamburger_btn)
         menu.setStyleSheet("""
-            QMenu {
-                background-color: #151722;
-                border: 1px solid #252838;
-                border-radius: 6px;
-                padding: 4px;
-                font-family: 'Google Sans Flex', sans-serif;
-            }
-            QMenu::item {
-                padding: 6px 18px 6px 6px;
-                border-radius: 4px;
-                color: #e2e8f0;
-                font-size: 12px;
-            }
-            QMenu::item:selected {
-                background-color: #3b82f6;
-                color: #ffffff;
-            }
-            QMenu::icon {
-                padding-left: 8px;
-                margin-right: 6px;
-            }
-            QMenu::separator {
-                height: 1px;
-                background-color: #252838;
-                margin: 4px 6px;
-            }
+            QMenu { background-color: #151722; border: 1px solid #252838; border-radius: 6px; padding: 4px; font-family: 'Google Sans Flex', sans-serif; }
+            QMenu::item { padding: 6px 18px 6px 6px; border-radius: 4px; color: #e2e8f0; font-size: 12px; }
+            QMenu::item:selected { background-color: #3b82f6; color: #ffffff; }
+            QMenu::icon { padding-left: 8px; margin-right: 6px; }
+            QMenu::separator { height: 1px; background-color: #252838; margin: 4px 6px; }
         """)
 
         new_tab_act = QAction(load_google_icon("add"), "New Tab", self)
@@ -1006,44 +1137,6 @@ class MiniumBrowser(QMainWindow):
         find_act.triggered.connect(lambda: self.search_pill.show_search())
         menu.addAction(find_act)
 
-        def toggle_web_theme():
-            self.web_theme_dark = not getattr(self, "web_theme_dark", True)
-
-            if hasattr(Qt, "ColorScheme") and hasattr(QGuiApplication.styleHints(), "setColorScheme"):
-                scheme = Qt.ColorScheme.Dark if self.web_theme_dark else Qt.ColorScheme.Light
-                QGuiApplication.styleHints().setColorScheme(scheme)
-
-            color_str = 'dark' if self.web_theme_dark else 'light'
-            js_code = f"""
-            (function() {{
-                let meta = document.querySelector('meta[name="color-scheme"]');
-                if (!meta) {{
-                    meta = document.createElement('meta');
-                    meta.name = 'color-scheme';
-                    document.head.appendChild(meta);
-                }}
-                meta.content = '{color_str}';
-                document.documentElement.style.setProperty('color-scheme', '{color_str}', 'important');
-            }})();
-            """
-
-            for i in range(self.tab_bar.count()):
-                v = self.tab_bar.tabData(i)
-                if v and not getattr(v, "_is_unloaded", False):
-                    v.page().runJavaScript(js_code)
-                    if hasattr(QWebEngineSettings.WebAttribute, "ForceDarkMode"):
-                        v.settings().setAttribute(
-                            QWebEngineSettings.WebAttribute.ForceDarkMode,
-                            self.web_theme_dark
-                        )
-
-            theme_name = "Dark" if self.web_theme_dark else "Light"
-            self.fullscreen_banner.show_message(f"Web Content Theme: {theme_name}")
-
-        theme_act = QAction(load_google_icon("theme"), "Toggle Web Theme [BETA]", self)
-        theme_act.triggered.connect(toggle_web_theme)
-        menu.addAction(theme_act)
-
         source_act = QAction(load_google_icon("code"), "View Page Source", self)
         source_act.triggered.connect(self.view_source)
         menu.addAction(source_act)
@@ -1065,37 +1158,10 @@ class MiniumBrowser(QMainWindow):
 
         menu.addSeparator()
 
-        protect_act = QAction(load_google_icon("security"), "Toggle Protection", self)
-        protect_act.setCheckable(True)
-        protect_act.setChecked(True)
-
-        def toggle_protect(enabled):
-            self.protect_me_enabled = enabled
-            self.adblock_interceptor.enabled = enabled
-            status = "now protected" if enabled else "no longer protected"
-            self.fullscreen_banner.show_message(f"You are {status} from ads, trackers and malicious sites.")
-
-        protect_act.toggled.connect(toggle_protect)
-        menu.addAction(protect_act)
-
-        js_act = QAction(load_google_icon("js"), "Toggle JavaScript", self)
-        js_act.setCheckable(True)
-        js_act.setChecked(True)
-
-        def toggle_js(enabled):
-            cv = self.current_view()
-            if cv:
-                cv.settings().setAttribute(QWebEngineSettings.WebAttribute.JavascriptEnabled, enabled)
-                cv.reload()
-            status = "enabled" if enabled else "disabled"
-            self.fullscreen_banner.show_message(f"JavaScript is now {status}.")
-
-        js_act.toggled.connect(toggle_js)
-        menu.addAction(js_act)
-
-        burn_act = QAction(load_google_icon("local_fire_department"), "Burn All Data", self)
-        burn_act.triggered.connect(self.burn_data)
-        menu.addAction(burn_act)
+        menu.addAction(QAction(load_google_icon("bm_n"), "Bookmarks", self, triggered=lambda: self.add_tab("minium://bookmarks")))
+        menu.addAction(QAction(load_google_icon("history"), "History", self, triggered=lambda: self.add_tab("minium://history")))
+        menu.addAction(QAction(load_google_icon("dl"), "Downloads", self, triggered=self.show_downloads_popup))
+        menu.addAction(QAction(load_google_icon("cog"), "Settings", self, triggered=lambda: self.add_tab("minium://settings")))
 
         menu.addSeparator()
 
@@ -1174,6 +1240,10 @@ class MiniumBrowser(QMainWindow):
 
     def on_download_requested(self, download: QWebEngineDownloadRequest):
         print("[*] browser: starting download...")
+
+        if not hasattr(self, "downloads_popup"):
+            self.downloads_popup = DownloadsPopup(self)
+
         name = download.suggestedFileName()
         if not name:
             name = os.path.basename(download.url().path()) or "download"
@@ -1335,7 +1405,7 @@ class MiniumBrowser(QMainWindow):
     def unload_tab(self, idx):
         view = self.tab_bar.tabData(idx)
         if not view or view == self.current_view() or getattr(view, "_is_unloaded", False):
-            self.fullscreen_banner.show_message("You cannot unload the currently active tab.")
+            self.fullscreen_banner.show_message("You cannot unload the currently active tab or an already unloaded tab.")
             return
 
         pix = view.grab()
@@ -1602,6 +1672,7 @@ class MiniumBrowser(QMainWindow):
             else:
                 self.url_bar.setText(u)
             self.update_shield_status()
+            self.update_bookmark_icon()
         self.update_tab_tooltip(view)
 
     def on_load_started(self, view):
@@ -1616,9 +1687,12 @@ class MiniumBrowser(QMainWindow):
         if view == self.current_view() and not self.headless:
             self.url_bar.finish_loading(ok)
             self.update_shield_status()
+            self.update_bookmark_icon()
             if view.url().toString().startswith("minium://newtab"):
                 view.setFocus()
                 view.page().runJavaScript("(()=>{ const inp = document.querySelector('input[name=\"q\"]'); if (inp) inp.focus(); })();")
+        if ok and view.url().scheme() in ("http", "https"):
+            self.record_history(view.title(), view.url().toString())
         self.update_tab_tooltip(view)
 
     def on_loading_changed(self, view, info: QWebEngineLoadingInfo):
@@ -1804,20 +1878,150 @@ class MiniumBrowser(QMainWindow):
                 cv.page().printToPdf(path)
 
     def burn_data(self):
-        self.profile.clearHttpCache()
-        self.profile.cookieStore().deleteAllCookies()
-        self.profile.clearAllVisitedLinks()
+        print("[!] browser: burning browsing data...")
+
+        GLOBAL_HISTORY.clear()
+        GLOBAL_BOOKMARKS.clear()
+
+        if hasattr(self, "profile") and self.profile:
+            self.profile.clearAllVisitedLinks()
+            self.profile.clearHttpCache()
+            if self.profile.cookieStore():
+                self.profile.cookieStore().deleteAllCookies()
+
+        if self.maxium_mode and os.path.exists(DATA_DIR):
+            print("[!] browser: wiping all persistent data from disk...")
+            for item in os.listdir(DATA_DIR):
+                item_path = os.path.join(DATA_DIR, item)
+                try:
+                    if os.path.isdir(item_path):
+                        shutil.rmtree(item_path, ignore_errors=True)
+                    else:
+                        os.remove(item_path)
+                except Exception as e:
+                    print(f"[x] browser: error removing {item}: {e}")
+
+        for fpath in (HISTORY_FILE, BOOKMARKS_FILE, PASSWORDS_FILE):
+            if os.path.exists(fpath):
+                try:
+                    os.remove(fpath)
+                except Exception:
+                    pass
+
+        fav_dir = os.path.join(CACHE_DIR, "favicons")
+        if os.path.exists(fav_dir):
+            try:
+                shutil.rmtree(fav_dir, ignore_errors=True)
+            except Exception:
+                pass
+
         self.closed_tabs_history.clear()
         BYPASSED_DOMAINS.clear()
         BYPASSED_PHISH_URLS.clear()
-        while self.tab_bar.count() > 1:
-            self.close_tab(1)
-        cv = self.current_view()
+
+        if hasattr(self, "devtools_pane") and self.devtools_pane.isVisible():
+            self.devtools_pane.close_pane()
+
+        self.tab_bar.blockSignals(True)
+        for i in reversed(range(1, self.tab_bar.count())):
+            w = self.tab_bar.tabData(i)
+            self.tab_bar.setTabData(i, None)
+            self.tab_bar.removeTab(i)
+            if w:
+                btn = getattr(w, "_audio_btn", None)
+                if btn:
+                    btn.deleteLater()
+                self.stack.removeWidget(w)
+                try:
+                    w.disconnect()
+                except Exception:
+                    pass
+                w.deleteLater()
+
+        cv = self.tab_bar.tabData(0)
         if cv:
             cv.history().clear()
             self.load_new_tab_page(cv)
-        self.fullscreen_banner.show_message("Burnt up all browsing data.")
+
+        self.tab_bar.setCurrentIndex(0)
+        self.tab_bar.blockSignals(False)
+        self.tab_bar.adjust_size()
+
+        self.refresh_bookmarks_bar()
+        self.update_bookmark_icon()
+
+        self.fullscreen_banner.show_message("All browsing data has been burned to a crisp.")
         QTimer.singleShot(200, gc.collect)
+
+    def update_bookmark_icon(self):
+        cv = self.current_view()
+        if not cv:
+            return
+        url = cv.url().toString()
+        from config import GLOBAL_BOOKMARKS
+        is_saved = any(b.get("url") == url for b in GLOBAL_BOOKMARKS)
+        self.url_bar.set_bookmark_state(is_saved)
+
+    def toggle_bookmark_current(self):
+        cv = self.current_view()
+        if not cv:
+            return
+
+        url = cv.url().toString()
+        if not url or url.startswith("minium://") or url == "about:blank":
+            self.fullscreen_banner.show_message("Internal pages cannot be bookmarked.", is_error=True)
+            return
+
+        title = cv.title() or url
+
+        icon_b64 = ""
+        try:
+            from PySide6.QtCore import QByteArray, QBuffer, QIODevice
+            from utils import cache_favicon_bytes
+            icon = cv.icon()
+            if not icon.isNull():
+                pixmap = icon.pixmap(32, 32)
+                if not pixmap.isNull():
+                    ba = QByteArray()
+                    buf = QBuffer(ba)
+                    buf.open(QIODevice.OpenModeFlag.WriteOnly)
+                    pixmap.save(buf, "PNG")
+                    raw_bytes = ba.data()
+                    icon_b64 = ba.toBase64().data().decode("utf-8")
+                    cache_favicon_bytes(url, raw_bytes)
+        except Exception as e:
+            print("[x] browser: failed to capture bookmark icon:", e)
+
+        from config import GLOBAL_BOOKMARKS
+        from utils import save_bookmarks
+
+        existing = next((b for b in GLOBAL_BOOKMARKS if b.get("url") == url), None)
+        if existing:
+            GLOBAL_BOOKMARKS.remove(existing)
+            self.fullscreen_banner.show_message("Bookmark removed.")
+        else:
+            GLOBAL_BOOKMARKS.append({"title": title, "url": url, "icon": icon_b64})
+            self.fullscreen_banner.show_message("Bookmark saved.")
+
+        save_bookmarks(self.maxium_mode)
+        self.update_bookmark_icon()
+        self.refresh_bookmarks_bar()
+
+    def record_history(self, title, url_str):
+        if not url_str or url_str.startswith("minium://") or url_str.startswith("devtools://") or url_str == "about:blank":
+            return
+
+        from config import GLOBAL_HISTORY
+        from utils import save_history
+        from PySide6.QtCore import QDateTime
+
+        time_str = QDateTime.currentDateTime().toString("MMM d, hh:mm")
+
+        if GLOBAL_HISTORY and GLOBAL_HISTORY[-1].get("url") == url_str:
+            return
+
+        GLOBAL_HISTORY.append({"title": title or url_str, "url": url_str, "time": time_str})
+        save_history(self.maxium_mode)
 
     def closeEvent(self, event):
         print("[*] browser: closing browser...")

@@ -69,6 +69,7 @@ sudo apt install python3 python3-pip qt6-webengine-dev-tools
    ```
 
 2. Run `install.sh`
+
   ```bash
   ./install.sh
   ```
@@ -82,10 +83,10 @@ sudo apt install python3 python3-pip qt6-webengine-dev-tools
    cd Minium
    ```
 
-2. Install Python dependencies (PySide6):
+2. Install Python dependencies:
 
    ```bash
-   pip install --user PySide6
+   pip install -r requirements.txt
    ```
 
 3. Run the built-in installer script to register Minium to your user environment (creates the binary launcher at `~/.local/bin/minium`, creates the XDG desktop entry, and registers MIME protocols):
@@ -175,6 +176,18 @@ To remove all data, simply remove the Minium source folder that you downloaded.
 ### 🧩 UserScripts & UserCSS (.user.js / .user.css)
 
 Drop any custom `.user.js` (Greasemonkey-style scripts) or `.user.css` file into the `./userscripts/` directory. Minium automatically detects, loads, and injects them into web pages on startup.
+
+### 🌟️ Minium Maxium Mode
+
+Enable this option in the settings to make all your browsing persist when you reopen Minium. All data is saved in the `./data/` directory.
+
+### 🔖️ Bookmarks
+
+Save the pages you visit frequently in the Bookmarks list, so that it becomes easier and faster to revisit them.
+
+### 🔑️ Secure Password Manager
+
+Keep your passwords stored here in an encrypted vault where only you can access them. Open it from the Settings.
 
 ---
 

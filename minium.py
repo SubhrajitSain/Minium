@@ -1,5 +1,6 @@
 import sys
 import os
+import shutil
 import argparse
 from threading import Thread
 
@@ -8,10 +9,11 @@ from PySide6.QtGui import QGuiApplication, QIcon, QFontDatabase, QFont, QPalette
 from PySide6.QtWidgets import QApplication
 from PySide6.QtWebEngineCore import QWebEngineUrlScheme
 
-from config import ICON_DIR, FONTS_DIR, WINDOWS, VERSION
+from config import ICON_DIR, FONTS_DIR, WINDOWS, VERSION, PREFS_FILE, DATA_DIR
 from security.adblock import start_adblock_fetch
 from browser import MiniumBrowser, UPDATE_SERVICE
 from installer import check_and_apply_update
+from utils import get_prefs, load_persistent_data
 
 def main():
     print(
@@ -47,6 +49,7 @@ def main():
     parser.add_argument("-i", "--install", action="store_true", help="Install Minium for current user")
     parser.add_argument("-u", "--uninstall", action="store_true", help="Uninstall Minium from current user")
     parser.add_argument("-U", "--update", action="store_true", help="Update Minium from remote repository")
+    parser.add_argument("-p", "--purge-data", action="store_true", help="Purge all data from disk")
     parser.add_argument("url", nargs="?", default=None, help="Starting URL")
 
     print("[*] main: parsing arguments...")
@@ -69,6 +72,27 @@ def main():
         import installer
         installer.check_and_apply_update()
         sys.exit(0)
+
+    if args.purge_data:
+        print("[!] main: purging data directory...")
+        try:
+            if os.path.exists(DATA_DIR):
+                shutil.rmtree(DATA_DIR)
+            if os.path.exists(PREFS_FILE):
+                os.remove(PREFS_FILE)
+            print("[s] main: data purge complete.")
+        except Exception as e:
+            print(f"[x] main: could not purge data: {e}")
+        args = [a for a in sys.argv if not (a == "--purge-data" or a == "-p")]
+        print("[*] main: restarting...")
+        os.execl(sys.executable, sys.executable, *args)
+        sys.exit(0)
+
+    print("[*] main: getting preferences...")
+    prefs = get_prefs()
+    maxium_mode_active = prefs.get("maxium_mode", False)
+    if maxium_mode_active:
+        load_persistent_data()
 
     print("[*] main: setting up app and app style...")
     app = QApplication([sys.argv[0]] + qt_args)
@@ -104,28 +128,32 @@ def main():
     app.setFont(QFont("Google Sans Flex", 10))
 
     print("[*] main: starting browser...")
-    browser = MiniumBrowser(headless=args.less, start_url=args.url)
+    browser = MiniumBrowser(headless=args.less, start_url=args.url, maxium_mode=maxium_mode_active)
     WINDOWS.append(browser)
     browser.show()
 
     def boot_update_check(browser=None):
         print("[*] main: starting boot update checks...")
-        from config import WINDOWS
-        from browser import UPDATE_SERVICE
-        import installer
         target = browser or (WINDOWS[0] if WINDOWS else None)
         if not target or getattr(target, "_is_closing", False):
+            return
+        if not target.prefs.get("boot_update_checks", True):
+            print("[i] main: boot update checks disabled in prefs.")
             return
         target.fullscreen_banner.show_message("Checking for any new updates...", auto_dismiss=False)
         def worker():
             try:
-                success, msg = installer.check_and_apply_update(dry_run=True)
+                success, msg = check_and_apply_update(dry_run=True)
             except Exception as e:
                 success, msg = False, f"Check failed: {e}"
             UPDATE_SERVICE.finished.emit(success, msg)
         Thread(target=worker, daemon=True).start()
 
-    QTimer.singleShot(2000, lambda: start_adblock_fetch(on_complete_callback=boot_update_check))
+    prefs = get_prefs()
+    if prefs.get("auto_update_adblock", True):
+        QTimer.singleShot(2500, lambda: start_adblock_fetch(on_complete_callback=boot_update_check))
+    else:
+        QTimer.singleShot(2500, lambda: boot_update_check())
 
     print("[*] main: executing app...")
     ret = app.exec()

@@ -8,6 +8,7 @@ from PySide6.QtGui import (
     QTextCharFormat,
     QColor,
     QFont,
+    QIcon
 )
 from PySide6.QtWidgets import (
     QMenu,
@@ -457,3 +458,78 @@ class HtmlSyntaxHighlighter(QSyntaxHighlighter):
             self.setFormat(start_index, comment_length, self.comment_format)
             match = self.comment_start.search(text, start_index + comment_length)
             start_index = match.start() if match else -1
+
+class WarningDialog(QDialog):
+    def __init__(self, title, message, action_text, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.setModal(True)
+
+        self.setFixedWidth(460)
+        self.setStyleSheet("background-color: #0e0f15;")
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(6)
+        layout.setSizeConstraint(QVBoxLayout.SizeConstraint.SetFixedSize)
+
+        header = QHBoxLayout()
+        icon_label = QLabel(self)
+        icon_label.setPixmap(load_google_icon("warning").pixmap(32, 32))
+        header.addWidget(icon_label, 0, Qt.AlignmentFlag.AlignTop)
+
+        title_widget = QWidget()
+        title_layout = QVBoxLayout(title_widget)
+        title_layout.setContentsMargins(12, 0, 0, 0)
+        title_layout.setSpacing(6)
+
+        title_label = QLabel(title, self)
+        title_label.setFont(QFont("Google Sans Flex", 15, QFont.Weight.Bold))
+        title_label.setStyleSheet("color: #f1f3f8;")
+        title_layout.addWidget(title_label)
+
+        msg_label = QLabel(message, self)
+        msg_label.setFont(QFont("Google Sans Flex", 10))
+        msg_label.setStyleSheet("color: #94a3b8; line-height: 1.4;")
+        msg_label.setWordWrap(True)
+        title_layout.addWidget(msg_label)
+
+        header.addWidget(title_widget)
+        layout.addLayout(header)
+
+        self.result = False
+        btn_box = QHBoxLayout()
+        btn_box.setContentsMargins(0, 0, 0, 0)
+        btn_box.addStretch(1)
+
+        btn_cancel = QPushButton("Cancel", self)
+        btn_cancel.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_cancel.setFont(QFont("Google Sans Flex", 10, QFont.Weight.Medium))
+        btn_cancel.setStyleSheet("""
+            QPushButton { background: transparent; color: #94a3b8; border: none; padding: 6px 16px; }
+            QPushButton:hover { background: #1a1c27; color: #ffffff; border-radius: 4px; }
+        """)
+        btn_cancel.clicked.connect(self.reject)
+        btn_box.addWidget(btn_cancel)
+
+        self.btn_action = QPushButton(action_text, self)
+        self.btn_action.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_action.setFont(QFont("Google Sans Flex", 10, QFont.Weight.Bold))
+        self.btn_action.setStyleSheet("""
+            QPushButton { background: #3b82f6; color: #ffffff; border: none; border-radius: 4px; padding: 6px 18px; }
+            QPushButton:hover { background: #2563eb; }
+        """)
+        self.btn_action.clicked.connect(self.accept)
+        btn_box.addWidget(self.btn_action)
+
+        layout.addLayout(btn_box)
+
+    def set_destructive(self):
+        self.btn_action.setStyleSheet("""
+            QPushButton { background: #ef4444; color: #ffffff; border: none; border-radius: 4px; padding: 6px 18px; }
+            QPushButton:hover { background: #dc2626; }
+        """)
+
+    def accept(self):
+        self.result = True
+        super().accept()
