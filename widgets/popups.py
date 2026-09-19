@@ -364,6 +364,9 @@ class AboutDialog(QDialog):
             </ul>
             <p><b>Security &amp; Threat Intel:</b></p>
             <ul>
+                <li><b>EasyList &amp; EasyPrivacy</b> Filter Lists</li>
+                <li><b>Fanboy's Annoyances &amp; EasyCookie</b></li>
+                <li><b>EasyList Anti-AdBlock</b></li>
                 <li><b>PhishTank</b> by Cisco Talos</li>
                 <li><b>HaGeZi Multi Ultimate</b> DNS Blocklist</li>
                 <li><b>HaGeZi TIF Medium</b> (Threat Intelligence Feeds)</li>

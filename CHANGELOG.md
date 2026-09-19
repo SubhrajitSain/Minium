@@ -1,5 +1,9 @@
 # 🌟 Minium Updates and Changelog
 
+## v0.1.9
+
+* Highly enhanced Minium's Adblock system from 81 to 100 on `adblock-tester.com`.
+
 ## v0.1.8
 
 * Fixed 2 bugs due to undefined imports in `browser.py` and `address_bar.py`.

@@ -26,7 +26,7 @@ GLOBAL_BOOKMARKS = []
 HISTORY_FILE = os.path.join(DATA_DIR, "history.json")
 BOOKMARKS_FILE = os.path.join(DATA_DIR, "bookmarks.json")
 
-VERSION = "0.1.8"
+VERSION = "0.1.9"
 GITHUB_REPO = "SubhrajitSain/Minium"
 RAW_REPO_URL = f"https://raw.githubusercontent.com/{GITHUB_REPO}/main"
 

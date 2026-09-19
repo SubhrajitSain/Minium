@@ -29,7 +29,7 @@ All third-party resources such as the font, icons and blocklists used retain the
 
 ## ✨ Features
 
-* 🛡️ **Privacy & Security First:** Built-in multi-source ad blocker (HaGeZi Ultimate & TIF Medium, AdGuard, StevenBlack, etc.) and real-time Phishing protection via Cisco Talos PhishTank.
+* 🛡️ **Privacy & Security First:** Built-in multi-source ad blocker (HaGeZi Ultimate & TIF Medium, AdGuard, StevenBlack, etc.) and real-time Phishing protection via Cisco Talos PhishTank, getting a perfect score on `adblock-tester.com`.
 * ⚡ **Ephemeral & Lightweight:** Your session is never saved to disk. Includes a **"Burn All Data"** option (`Menu > Burn All Data`) to wipe cache, history, and active sessions instantly.
 * 🪟 **Modern UI:** Rounded window borders, drag zones, hide-able tabs, toast messages, `-l` or `--less` mode and more.
 * 🔍 **Power-User Ergonomics:** In-page find utility, audio indicators, tab pinning, tab unloading (to save RAM), and a Minium Dev Tools side pane (`F12` or `Ctrl+Shift+I`).
@@ -207,6 +207,7 @@ Resources used in the making:
 * **d3ward** for the Toolz Blacklist.
 * **Peter Lowe**'s Adservers (Yoyo).
 * **AnudeepND** for the Adservers Blacklist.
+* **EasyList**, **EasyPrivacy**, **EasyCookies**, **Fanboy's Annoyances** and **EasyList Anti-AdBlock** for their amazing lists.
 
 ---
 
