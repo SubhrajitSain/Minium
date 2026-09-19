@@ -1,5 +1,5 @@
 from PySide6.QtCore import Qt, QSize, QRect, QTimer
-from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QPalette, QAction
+from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QPalette, QAction, QFont
 from PySide6.QtWidgets import QLineEdit
 
 from utils import load_google_icon

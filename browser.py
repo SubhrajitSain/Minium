@@ -11,7 +11,7 @@ from threading import Thread
 from PySide6.QtCore import Qt, QSize, QUrl, QTimer, QEvent, QPoint, QObject, Signal
 from PySide6.QtGui import QAction, QKeySequence, QShortcut, QIcon, QFontDatabase, QGuiApplication
 from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QToolButton, QFileDialog, QDialog, QPlainTextEdit, QTabBar, QSizePolicy, QLabel, QMenu, QSplitter
-from PySide6.QtWebEngineCore import QWebEngineProfile, QWebEngineSettings, QWebEngineLoadingInfo, QWebEngineDownloadRequest, QWebEnginePage
+from PySide6.QtWebEngineCore import QWebEngineProfile, QWebEngineSettings, QWebEngineLoadingInfo, QWebEngineDownloadRequest, QWebEnginePage, QWebEngineFullScreenRequest
 from PySide6.QtWebEngineWidgets import QWebEngineView
 
 from config import GLOBAL_HISTORY, GLOBAL_BOOKMARKS, HISTORY_FILE, BOOKMARKS_FILE, CACHE_DIR, WINDOWS, BYPASSED_DOMAINS, BYPASSED_PHISH_URLS, PHISH_CACHE, ICON_DIR, HTTPS_UPGRADE_ATTEMPTS, HTTP_FALLBACK_URLS, PREFS_FILE, DATA_DIR, PASSWORDS_FILE

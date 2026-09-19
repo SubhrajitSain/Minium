@@ -1,5 +1,9 @@
 # 🌟 Minium Updates and Changelog
 
+## v0.1.8
+
+* Fixed 2 bugs due to undefined imports in `browser.py` and `address_bar.py`.
+
 ## v0.1.7
 
 * Added Maxium mode, which makes data persist after the browser closes.
